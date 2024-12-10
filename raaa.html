@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizzagenda</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f8f8;
+            color: #333;
+            position: relative;
+            margin: 0;
+            padding: 0;
+        }
+        .calendar {
+            background-color: #fff;
+            border: 2px solid #d4e5f5;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 800px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .calendar h2 {
+            text-align: center;
+            color: #0073e6;
+            width: 100%;
+        }
+        .menu {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            margin: 20px;
+        }
+        .menu select, .menu button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #d4e5f5;
+            border-radius: 5px;
+            font-size: 1em;
+            background-color: #f3f3f3;
+        }
+        .poem {
+            margin-top: 20px;
+            font-style: italic;
+            color: #555;
+            background-color: #eaf7ff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        .poem h3 {
+            color: #0073e6;
+        }
+        .day-container {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+            margin: 10px 0;
+        }
+        .day {
+            border: 1px solid #0073e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .day:hover {
+            background-color: #e6f4ff;
+        }
+        .hour-container {
+            display: flex;
+            flex-direction: column;
+            width: 75%;
+            margin-top: 20px;
+        }
+        .hour {
+            padding: 5px;
+            border-bottom: 1px solid #d4e5f5;
+            font-size: 0.9em;
+            color: #333;
+        }
+        .editable {
+            background-color: #f8f8f8;
+            border: none;
+            width: 100%;
+            font-family: inherit;
+        }
+        .notes {
+            display: none;
+            background-color: #fff;
+            border: 2px solid #d4e5f5;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        .notes h2 {
+            text-align: center;
+            color: #0073e6;
+        }
+        .notes textarea {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #d4e5f5;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: inherit;
+        }
+        #accept-button {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #d4e5f5;
+            background-color: #0073e6;
+            color: white;
+            border-radius: 5px;
+        }
+        .saved-notes {
+            margin-top: 20px;
+        }
+        .saved-note {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #e0f7fa;
+            border-radius: 5px;
+        }
+        .saved-note span {
+            font-weight: bold;
+            color: #0073e6;
+        }
+        .pizza-logo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            background-image: url('pizza.png'); /* Aquí debes colocar la URL de la imagen de la pizza */
+            background-size: cover;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadContent();
+            generateCalendar(currentMonth, currentYear);
+
+            document.querySelectorAll('.editable').forEach(element => {
+                element.addEventListener('input', saveContent);
+            });
+
+            document.getElementById('menu-notes').addEventListener('click', () => {
+                document.querySelector('.calendar').style.display = 'none';
+                document.querySelector('.notes').style.display = 'block';
+            });
+
+            document.getElementById('menu-calendar').addEventListener('click', () => {
+                document.querySelector('.calendar').style.display = 'block';
+                document.querySelector('.notes').style.display = 'none';
+            });
+
+            document.getElementById('accept-button').addEventListener('click', () => {
+                let noteContent = document.querySelector('.notes textarea').value;
+                let selectedDay = document.getElementById('day-select').value;
+                if (selectedDay && noteContent) {
+                    saveNoteToSide(selectedDay, noteContent);
+                    document.querySelector('.notes textarea').value = '';
+                } else {
+                    alert('Por favor selecciona un día y escribe tus notas.');
+                }
+            });
+
+            document.getElementById('menu-poem').addEventListener('click', () => {
+                showPoem();
+            });
+
+            // Cargar calendario basado en la selección del mes y año
+            document.getElementById('month-select').addEventListener('change', (event) => {
+                currentMonth = parseInt(event.target.value);
+                generateCalendar(currentMonth, currentYear);
+            });
+
+            document.getElementById('year-select').addEventListener('change', (event) => {
+                currentYear = parseInt(event.target.value);
+                generateCalendar(currentMonth, currentYear);
+            });
+        });
+
+        let currentMonth = new Date().getMonth(); // Mes actual
+        let currentYear = new Date().getFullYear(); // Año actual
+
+        function saveContent() {
+            const elements = document.querySelectorAll('.editable');
+            const content = {};
+            elements.forEach((element, index) => {
+                content[index] = element.innerHTML;
+            });
+            localStorage.setItem('pizzagendaContent', JSON.stringify(content));
+        }
+
+        function loadContent() {
+            const savedContent = localStorage.getItem('pizzagendaContent');
+            if (savedContent) {
+                const content = JSON.parse(savedContent);
+                const elements = document.querySelectorAll('.editable');
+                elements.forEach((element, index) => {
+                    element.innerHTML = content[index] || '';
+                });
+            }
+        }
+
+        function saveNoteToSide(day, note) {
+            const notesContainer = document.getElementById('saved-notes');
+            const noteElement = document.createElement('div');
+            noteElement.classList.add('saved-note');
+            noteElement.innerHTML = `<span>${day}:</span> ${note}`;
+            notesContainer.appendChild(noteElement);
+        }
+
+        function generateCalendar(month, year) {
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const daysOfWeek = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+            const daysInMonth = new Date(year, month + 1, 0).getDate(); // Obtiene el número de días del mes
+            const firstDay = new Date(year, month, 1).getDay(); // Obtiene el primer día del mes (0 = Domingo)
+
+            // Mostrar el mes actual
+            document.querySelector('.calendar h2').textContent = `${monthNames[month]} ${year}`;
+
+            const dayContainer = document.querySelector('.day-container');
+            dayContainer.innerHTML = ""; // Limpia el contenedor de días
+            let dayCount = 1;
+
+            // Llenar el calendario con los días del mes
+            for (let i = 0; i < 6; i++) { // 6 filas (para cubrir todos los días)
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.flexWrap = 'wrap';
+
+                for (let j = 0; j < 7; j++) {
+                    if (i === 0 && j < firstDay) {
+                        row.appendChild(document.createElement('div')); // Vacío para los días antes del primer día del mes
+                    } else if (dayCount <= daysInMonth) {
+                        const dayElement = document.createElement('div');
+                        dayElement.classList.add('day');
+                        dayElement.textContent = `${daysOfWeek[j]} ${dayCount}`;
+                        dayElement.addEventListener('click', () => {
+                            showHours(dayCount);
+                        });
+                        row.appendChild(dayElement);
+                        dayCount++;
+                    }
+                }
+                dayContainer.appendChild(row);
+            }
+
+            // Actualizar los selectores de mes y año
+            const monthSelect = document.getElementById('month-select');
+            const yearSelect = document.getElementById('year-select');
+
+            // Establecer los valores de los selectores
+            monthSelect.value = month;
+            yearSelect.value = year;
+        }
+
+        function showHours(day) {
+            const hourContainer = document.querySelector('.hour-container');
+            hourContainer.innerHTML = ""; // Limpiar las horas previas
+            for (let hour = 5; hour <= 22; hour++) {
+                const hourFormatted = hour % 12 || 12;
+                const amPm = hour < 12 ? "AM" : "PM";
+                const hourDiv = document.createElement('div');
+                hourDiv.classList.add('hour');
+                hourDiv.innerHTML = `${hourFormatted}:00 ${amPm}`;
+                hourContainer.appendChild(hourDiv);
+            }
+        }
+
+        function showPoem() {
+            const poems = [
+                "La vida es un sueño, y los sueños, sueños son.",
+                "El sol brilla con fuerza, iluminando el camino.",
+                "Cada día es una nueva oportunidad para soñar.",
+                "La belleza está en los pequeños momentos.",
+                "Tu sonrisa es la luz que ilumina mis días."
+            ];
+            const randomPoem = poems[Math.floor(Math.random() * poems.length)];
+            document.querySelector('.poem').style.display = 'block';
+            document.querySelector('.poem').innerHTML = `<h3>Poema del Día</h3><p>${randomPoem}</p>`;
+        }
+    </script>
+</head>
+<body>
+    <div class="pizza-logo"></div> <!-- Imagen de la pizza en la esquina superior -->
+    <div class="menu">
+        <h2>Bienvenida, Dirianny</h2>
+        <select id="month-select">
+            <option value="0">Enero</option>
+            <option value="1">Febrero</option>
+            <option value="2">Marzo</option>
+            <option value="3">Abril</option>
+            <option value="4">Mayo</option>
+            <option value="5">Junio</option>
+            <option value="6">Julio</option>
+            <option value="7">Agosto</option>
+            <option value="8">Septiembre</option>
+            <option value="9">Octubre</option>
+            <option value="10">Noviembre</option>
+            <option value="11">Diciembre</option>
+        </select>
+        <select id="year-select">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+        </select>
+        <button id="menu-calendar">Ver Calendario</button>
+        <button id="menu-notes">Ir a Notas</button>
+        <button id="menu-poem">Poema del Día</button>
+        <div class="poem"></div> <!-- Aquí se muestra el poema -->
+    </div>
+    <div class="calendar">
+        <h2>Agenda Mensual</h2>
+        <div class="day-container">
+            <!-- Los días se generarán dinámicamente aquí -->
+        </div>
+        <div class="hour-container">
+            <!-- Las horas se desplegarán aquí cuando se haga clic en un día -->
+        </div>
+    </div>
+    <div class="notes">
+        <h2>Notas por Días</h2>
+        <textarea placeholder="Escribe tus notas aquí..."></textarea>
+        <button id="accept-button">Aceptar y Guardar</button>
+        <div class="saved-notes" id="saved-notes">
+            <!-- Notas guardadas se agregarán aquí -->
+        </div>
+    </div>
+</body>
+</html>
